@@ -5,18 +5,12 @@ import tweepy as tw
 #textblob API : Textblob
 #TextBlob perform simple natural language processing tasks.
 from textblob import TextBlob #library for processing textual data
-#import pandas as pd
-#import numpy as np
 import plotly.graph_objects as go
 import re
 import csv
-import datetime as datetime
-import sys,os
-import statistics
-import socket
 #graphs lib
 import plotly.offline as opy
-import plotly.graph_objs as go
+# import plotly.graph_objs as go
 from django.views.generic import TemplateView
 #==============================
 #Custom User_Exception
@@ -24,7 +18,9 @@ from django.views.generic import TemplateView
 class User_Exception(Exception):
     def __init__(self,msg):
         self.msg=msg
-#Authentication token @pushpanshu1103@gmail.com
+
+# Get API From Tweepy 
+# pushpanshu1103@gmail.com
 CONSUMER_KEY = '7UT6uZVUVBffbbS2t3vn9UM4y'
 CONSUMER_SECRET = 'h1Z1Zna8aiThpQx8NC1yKEun48MDLAEaofnXji1Pa0qDJy5JOD'
 ACCESS_TOKEN = '1173151798980304898-dluB0mmBuzhlcQakP86oiE5uiWPKjS'
@@ -40,9 +36,6 @@ figure=None
 #remove_url from tweets
 def remove_url(txt):
     return " ".join(re.sub("([^0-9A-Za-z \t])|(\w+:\/\/\S+)", "", txt).split())
-# Collect tweets
-# --> twitter don't give access to dig too old history
-# --> Cursor is a object which store tweets containing searched item
 x=True
 pos =[]
 neg =[]
@@ -55,10 +48,10 @@ try:
     def collect_tweets(search_words,date_since,num): # function to search "tweets" inbound of time
         csvFile = open('currenttweets.csv', 'w')
         csvWriter = csv.writer(csvFile)
-        for tweet in tw.Cursor(api.search, #call search function of twitter search
+        for tweet in tw.Cursor(api.search,
                             q=search_words,
                             count= 280, #Tweet Limit to load
-                            lang="en", # define english language
+                            lang="en",
                             since=date_since).items(num):
             tweet = tweet.text.encode(encoding = 'utf-8')
             tweet = re.sub(r'\W+', ' ', str(tweet)) #By Python definition '\W == [^a-zA-Z0-9_], which excludes all numbers, letters and _
@@ -75,7 +68,7 @@ except User_Exception as msg:
     print(msg)
 
 
-# Data is loaded in List and CSV and filter function works on text means string 
+# Data is loaded in CSV and filter function works on text 
 def read_tweets():
     try:
         l=[]
@@ -84,10 +77,10 @@ def read_tweets():
         a=0
         b=0
         c=0
+        label = ''
         with open('currenttweets.csv','r')as f:
             data = csv.reader(f)
             for row in data:
-                #print(type(row))
                 val = TextBlob(str(row))
                 pol_val,sub_val = val.sentiment.polarity , val.sentiment.subjectivity
                 val=val.sentiment
@@ -102,9 +95,6 @@ def read_tweets():
                     pos.append(pol_val)
                 sen_values.append(val)
                 l.append(row)
-                #print("Value: ",pol_val,"\t",sub_val,"-->","Tweet: ",row)
-            # score = statistics.mean(sen_values[0])
-            # print(score)
             try:
                 for i in pos:
                     print('pos :',i)
@@ -119,58 +109,38 @@ def read_tweets():
             lsum = sum(neg)
             nsum = sum(neu)
             score = psum+lsum+nsum
-            # score = statistics.mean(score)
-            #print(psum,lsum,nsum)
             if(score == 0):
                 label = "Neutral"
             elif(score <=0.0):
                 label = "Negative"
             elif(score >=0.0):
                 label = "Positive"
-            #print('Score :', score, 'Level :', label)
-            # piechart(a,b,c)
             return score,label,l,sen_values
     except BaseException as e:
         print(e)
-# ============================= 
-# Create your views here.
+
 
 def index(request):
     if request.method == 'POST':
         search=request.POST.get('search','')
         date=request.POST.get('date','')
         text=request.POST.get('text','100')
-        num=int(text)
+        num= int(text) #if int(text) else 100
         collect_tweets(search+" -filter:retweets",date,num)
         read_tweets()
         score,lable,tweet,val= read_tweets()
         data = zip(val,tweet)
         params = {'score':score,'lable':lable,'data':data}
-        #return render(request,'analysis/index.html')
-        return render(request,'analysis/result.html',params)
+        return render(request,'result.html',params)
     else:
-        return render(request,'analysis/index.html')
+        return render(request,'index.html')
 
 
 #graphs
-
 class Graph(TemplateView):
     template_name = 'graph.html'
     def get_context_data(self,**kwargs,):
         context = super(Graph, self).get_context_data(**kwargs)
-        # N = 1000
-        # random_x = np.random.randn(N)
-        # random_y = np.random.randn(N)
-
-        # # Create a trace
-        # trace = go.Scatter(
-        #     x = random_x,
-        #     y = random_y,
-        #     mode = 'markers'
-        # )
-        # data=go.Data([trace])
-        # layout=go.Layout(title="Meine Daten", xaxis={'title':'x1'}, yaxis={'title':'x2'})
-        # figure=go.Figure(data=data,layout=layout)
         try:
             a=0
             b=0
@@ -178,7 +148,6 @@ class Graph(TemplateView):
             with open('currenttweets.csv','r')as f:
                 data = csv.reader(f)
                 for row in data:
-                    #print(type(row))
                     val = TextBlob(str(row))
                     pol_val,sub_val = val.sentiment.polarity , val.sentiment.subjectivity
                     val=val.sentiment
@@ -202,4 +171,4 @@ class Graph(TemplateView):
 def chart(request):
     g = Graph()
     context = g.get_context_data()
-    return render(request,'analysis/graph.html',context)
+    return render(request,'graph.html',context)
